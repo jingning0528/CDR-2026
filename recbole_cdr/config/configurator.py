@@ -89,27 +89,13 @@ class CDRConfig(Config):
                 'If you want to run cross-domain recommender, '
                 'name of both source domain and target domain should be specified in config file.'
             )
-        if source_dataset_name == 'ml-100k' or source_dataset_name == 'ml-1m':
-            current_path = os.path.dirname(os.path.realpath(__file__))
-            self.final_config_dict['source_domain']['data_path'] = os.path.join(current_path,
-                                                                                '../dataset_example/' + source_dataset_name)
-        else:
-            if 'data_path' not in self.final_config_dict['source_domain']:
-                data_path = self.final_config_dict['data_path']
-            else:
-                data_path = self.final_config_dict['source_domain']['data_path']
-            self.final_config_dict['source_domain']['data_path'] = os.path.join(data_path, source_dataset_name)
-
-        if target_dataset_name == 'ml-100k' or target_dataset_name == 'ml-1m':
-            current_path = os.path.dirname(os.path.realpath(__file__))
-            self.final_config_dict['target_domain']['data_path'] = os.path.join(current_path,
-                                                                                '../dataset_example/' + target_dataset_name)
-        else:
-            if 'data_path' not in self.final_config_dict['target_domain']:
-                data_path = self.final_config_dict['data_path']
-            else:
-                data_path = self.final_config_dict['target_domain']['data_path']
-            self.final_config_dict['target_domain']['data_path'] = os.path.join(data_path, target_dataset_name)
+        for domain, dataset_name in (
+                ('source_domain', source_dataset_name),
+                ('target_domain', target_dataset_name)):
+            data_path = self.final_config_dict[domain].get(
+                'data_path', self.final_config_dict['data_path'])
+            self.final_config_dict[domain]['data_path'] = os.path.join(
+                os.path.expanduser(data_path), dataset_name)
 
         self.final_config_dict['dataset'] = {'source_domain': source_dataset_name,
                                              'target_domain': target_dataset_name}
