@@ -51,7 +51,7 @@ from recbole_cdr.quick_start import run_recbole_cdr
 # For the two examples above, each .inter file must use the columns
 # user_id, item_id, rating (timestamp may also be present but is not loaded).
 # ---------------------------------------------------------------------------
-# DATASET_ROOT = Path('/content/drive/MyDrive/CDR-2026-Data')
+# DATASET_ROOT = Path('/content/drive/MyDrive/CDR-2026/recbole_cdr/dataset_example')
 DATASET_ROOT = Path('/Users/jing/Documents/PhD-CDR/20260828/RecBole-CDR/recbole_cdr/dataset_example')
 SOURCE_DATASET = 'Book-Crossing'
 TARGET_DATASET = 'Librarything'
