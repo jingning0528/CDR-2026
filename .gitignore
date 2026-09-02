@@ -1,0 +1,29 @@
+# Saved models
+/saved*
+*.pth
+
+general_yaml
+docs/
+.vscode/
+dataset/
+
+# Local cross-domain recommendation datasets
+/recbole_cdr/dataset_example/AmazonBooks/
+/recbole_cdr/dataset_example/AmazonMov/
+/recbole_cdr/dataset_example/Book-Crossing/
+/recbole_cdr/dataset_example/Book-Crossing_Librarything.link
+/recbole_cdr/dataset_example/DoubanBook/
+/recbole_cdr/dataset_example/DoubanMovie/
+/recbole_cdr/dataset_example/DoubanMusic/
+/recbole_cdr/dataset_example/Librarything/
+
+.idea/
+*.pyc
+*.log
+log_tensorboard/*
+saved/
+*.lprof
+*.egg-info/
+docs/build/
+wandb/*
+.DS_Store
