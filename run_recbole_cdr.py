@@ -5,6 +5,8 @@
 import argparse
 from pathlib import Path
 
+import torch
+
 from recbole_cdr.quick_start import run_recbole_cdr
 
 
@@ -49,6 +51,7 @@ from recbole_cdr.quick_start import run_recbole_cdr
 # For the two examples above, each .inter file must use the columns
 # user_id, item_id, rating (timestamp may also be present but is not loaded).
 # ---------------------------------------------------------------------------
+# DATASET_ROOT = Path('/content/drive/MyDrive/CDR-2026-Data')
 DATASET_ROOT = Path('/Users/jing/Documents/PhD-CDR/20260828/RecBole-CDR/recbole_cdr/dataset_example')
 SOURCE_DATASET = 'Book-Crossing'
 TARGET_DATASET = 'Librarything'
@@ -56,6 +59,13 @@ SOURCE_ITEM_ID_FIELD = 'ISBN'
 TARGET_ITEM_ID_FIELD = 'book_name'
 USER_LINK_FILE = None
 ITEM_LINK_FILE = 'Book-Crossing_Librarything.link'
+
+# Compute configuration:
+#   'auto' -> use a CUDA GPU when available; otherwise use CPU
+#   'cuda' -> require a CUDA GPU (useful for Colab experiments)
+#   'cpu'  -> always use CPU (useful for local debugging)
+COMPUTE_DEVICE = 'auto'
+GPU_ID = '0'
 
 
 def _resolve_optional_path(path, dataset_root):
@@ -104,6 +114,26 @@ def build_dataset_config(dataset_root, source_dataset, target_dataset,
     }
 
 
+def build_compute_config(compute_device='auto', gpu_id='0'):
+    """Select CUDA automatically while keeping an explicit CPU fallback."""
+    compute_device = compute_device.lower()
+    if compute_device not in {'auto', 'cuda', 'cpu'}:
+        raise ValueError("compute_device must be one of: 'auto', 'cuda', 'cpu'")
+
+    cuda_available = torch.cuda.is_available()
+    if compute_device == 'cuda' and not cuda_available:
+        raise RuntimeError(
+            "CUDA was requested, but PyTorch cannot detect a CUDA GPU. "
+            "Use --compute_device auto or --compute_device cpu."
+        )
+
+    use_gpu = cuda_available if compute_device == 'auto' else compute_device == 'cuda'
+    return {
+        'use_gpu': use_gpu,
+        'gpu_id': str(gpu_id),
+    }
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', '-m', type=str, default='DTCDR', help='name of models')
@@ -122,6 +152,11 @@ if __name__ == '__main__':
                         help='user link file, absolute or relative to dataset_root')
     parser.add_argument('--item_link_file', type=str, default=ITEM_LINK_FILE,
                         help='item link file, absolute or relative to dataset_root')
+    parser.add_argument('--compute_device', choices=('auto', 'cuda', 'cpu'),
+                        default=COMPUTE_DEVICE,
+                        help='auto-detect CUDA, require CUDA, or force CPU')
+    parser.add_argument('--gpu_id', type=str, default=GPU_ID,
+                        help='CUDA GPU index used when a GPU is selected')
 
     args, _ = parser.parse_known_args()
 
@@ -135,8 +170,10 @@ if __name__ == '__main__':
         user_link_file=args.user_link_file,
         item_link_file=args.item_link_file,
     )
+    runtime_config = build_compute_config(args.compute_device, args.gpu_id)
+    config = {**dataset_config, **runtime_config}
     run_recbole_cdr(
         model=args.model,
         config_file_list=config_file_list,
-        config_dict=dataset_config,
+        config_dict=config,
     )
