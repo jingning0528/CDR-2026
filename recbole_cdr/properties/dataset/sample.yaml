@@ -79,5 +79,5 @@ target_domain:
 # training and evaluation
 train_epochs: ["BOTH:500"]
 train_batch_size: 4096
-eval_batch_size: 4096000
+eval_batch_size: 4096
 valid_metric: NDCG@10
