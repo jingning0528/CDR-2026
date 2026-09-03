@@ -1,0 +1,13 @@
+# TransformerDTCDR model configuration
+embedding_size: 64
+learning_rate: 0.0005
+mlp_hidden_size: [64, 64]
+dropout_prob: 0.3
+alpha: 0.3
+base_model: NeuMF
+
+# embedding_size must be divisible by transformer_num_heads.
+transformer_num_heads: 4
+transformer_num_layers: 1
+transformer_dim_feedforward: 256
+transformer_dropout: 0.3

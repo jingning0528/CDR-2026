@@ -54,6 +54,13 @@ class TestRecommender(unittest.TestCase):
         }
         quick_test(config_dict)
 
+    def test_transformer_dtcdr(self):
+        config_dict = {
+            'model': 'TransformerDTCDR',
+            'train_epochs': ["BOTH:1"],
+        }
+        quick_test(config_dict)
+
     def test_emcdr(self):
         config_dict = {
             'model': 'EMCDR',

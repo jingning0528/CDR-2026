@@ -136,7 +136,7 @@ def build_compute_config(compute_device='auto', gpu_id='0'):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model', '-m', type=str, default='DTCDR', help='name of models')
+    parser.add_argument('--model', '-m', type=str, default='TransformerDTCDR', help='name of models')
     parser.add_argument('--config_files', type=str, default=None, help='config files')
     parser.add_argument('--dataset_root', type=Path, default=DATASET_ROOT,
                         help='directory containing all dataset subdirectories')
