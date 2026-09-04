@@ -1,0 +1,15 @@
+# HistoryTransformerDTCDR model configuration
+embedding_size: 64
+learning_rate: 0.0005
+mlp_hidden_size: [64, 64]
+dropout_prob: 0.3
+alpha: 0.3
+
+# embedding_size must be divisible by history_transformer_num_heads.
+history_transformer_num_heads: 4
+history_transformer_ffn_size: 256
+history_transformer_dropout: 0.3
+
+# Candidate-to-history cross-attention uses one query over at most H keys.
+# Recommended ablation values: 20, 50, and 100.
+history_transformer_max_history_len: 50
