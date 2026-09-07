@@ -10,11 +10,12 @@ import logging
 from logging import getLogger
 import torch
 
-from recbole.utils import init_logger, init_seed, set_color
+from recbole.utils import init_seed, set_color
 
 from recbole_cdr.config import CDRConfig
 from recbole_cdr.data import create_dataset, data_preparation
 from recbole_cdr.utils import get_model, get_trainer
+from recbole_cdr.utils.logger import init_logger
 
 
 def run_recbole_cdr(model=None, config_file_list=None, config_dict=None, saved=True):
