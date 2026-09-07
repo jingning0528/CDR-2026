@@ -1,0 +1,10 @@
+# TransformerGPUDP model configuration
+embedding_size: 64
+learning_rate: 0.0005
+mlp_hidden_size: [64, 64]
+dropout_prob: 0.3
+alpha: 0.3
+base_model: NeuMF
+
+# DP parameters are defined by the supplied model implementation:
+# sigma = 0.05 and clip_norm = 100.

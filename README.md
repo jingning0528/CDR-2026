@@ -1,6 +1,6 @@
 conda activate "RecBole-CDR-main 2"
 python run_recbole_cdr.py \
-  --model TransformerDTCDR \
+  --model HistoryTransformerDTCDR \
   --dataset_preset movielens
 
 
@@ -28,7 +28,7 @@ Evaluate   : 100%|████████████████████�
 06 Sep 14:47    INFO  best valid : OrderedDict([('recall@10', 0.2266), ('recall@20', 0.3352), ('recall@50', 0.5273), ('mrr@10', 0.3368), ('mrr@20', 0.3454), ('mrr@50', 0.3493), ('ndcg@10', 0.209), ('ndcg@20', 0.237), ('ndcg@50', 0.2998), ('hit@10', 0.684), ('hit@20', 0.8081), ('hit@50', 0.9226), ('precision@10', 0.1295), ('precision@20', 0.103), ('precision@50', 0.0698)])
 06 Sep 14:47    INFO  test result: OrderedDict([('recall@10', 0.2229), ('recall@20', 0.3385), ('recall@50', 0.5356), ('mrr@10', 0.3682), ('mrr@20', 0.3767), ('mrr@50', 0.3806), ('ndcg@10', 0.2284), ('ndcg@20', 0.2534), ('ndcg@50', 0.3178), ('hit@10', 0.6723), ('hit@20', 0.7953), ('hit@50', 0.9088), ('precision@10', 0.1499), ('precision@20', 0.1165), ('precision@50', 0.0773)])
 
-
+- 
 
 - Bookcrossing
 - DTCDR

@@ -82,6 +82,13 @@ class TestRecommender(unittest.TestCase):
         }
         quick_test(config_dict)
 
+    def test_transformer_gpu_dp(self):
+        config_dict = {
+            'model': 'TransformerGPUDP',
+            'train_epochs': ["BOTH:1"],
+        }
+        quick_test(config_dict)
+
     def test_emcdr(self):
         config_dict = {
             'model': 'EMCDR',
