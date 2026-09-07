@@ -77,7 +77,7 @@ target_domain:
     rating: "[5,inf)"
   drop_filter_field: True
 # training and evaluation
-train_epochs: ["BOTH:500"]
+train_epochs: ["BOTH:300"]
 train_batch_size: 256
-eval_batch_size: 4096
+eval_batch_size: 256
 valid_metric: NDCG@10

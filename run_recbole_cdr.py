@@ -18,13 +18,21 @@ from recbole_cdr.quick_start import run_recbole_cdr
 #   'douban'        -> DoubanBook -> DoubanMovie
 # You can also override it without editing this file, for example:
 #   python run_recbole_cdr.py --dataset_preset amazon
-DATASET_PRESET = 'book_crossing'
+DATASET_PRESET = 'amazon'
 
-# This must be an absolute path, but the datasets may live outside the project.
-# The selected preset expects its two dataset directories under this root.
-# DATASET_ROOT = Path('/content/drive/MyDrive/CDR-2026/recbole_cdr/dataset_example')
-# DATASET_ROOT = Path('/content/drive/MyDrive/CDR-2026-Data/dataset_example')
-DATASET_ROOT = Path('/Users/jing/Documents/PhD-CDR/20260828/RecBole-CDR/recbole_cdr/dataset_example')
+# These are absolute paths and may be outside the project. When Google Drive
+# is mounted in Colab, its dataset root is selected automatically; otherwise
+# the local root is used. --dataset_root can override either location.
+COLAB_DATASET_ROOT = Path(
+    '/content/drive/MyDrive/CDR-2026-Data/dataset_example'
+)
+LOCAL_DATASET_ROOT = Path(
+    '/Users/jing/Documents/PhD-CDR/20260828/RecBole-CDR/'
+    'recbole_cdr/dataset_example'
+)
+DATASET_ROOT = (
+    COLAB_DATASET_ROOT if COLAB_DATASET_ROOT.is_dir() else LOCAL_DATASET_ROOT
+)
 
 DATASET_PRESET_FILES = {
     'movielens': 'movielens.yaml',

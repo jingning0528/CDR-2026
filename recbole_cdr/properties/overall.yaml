@@ -16,13 +16,13 @@ wandb_project: 'recbole_cdr'
 
 # training settings
 train_epochs: ["BOTH:300"]
-train_batch_size: 2048
+train_batch_size: 256
 learner: adam
-learning_rate: 0.001
+learning_rate: 0.0005
 neg_sampling:
   uniform: 1
-eval_step: 1
-stopping_step: 10
+eval_step: 5
+stopping_step: 5
 clip_grad_norm: ~
 # clip_grad_norm:  {'max_norm': 5, 'norm_type': 2}
 weight_decay: 0.0
@@ -39,7 +39,7 @@ eval_args:
 repeatable: False
 metrics: ["Recall","MRR","NDCG","Hit","Precision"]
 topk: [10, 20, 50]
-valid_metric: MRR@10
+valid_metric: NDCG@10
 valid_metric_bigger: True
-eval_batch_size: 4096
+eval_batch_size: 256
 metric_decimal_place: 4
