@@ -78,6 +78,6 @@ target_domain:
   drop_filter_field: True
 # training and evaluation
 train_epochs: ["BOTH:300"]
-train_batch_size: 256
-eval_batch_size: 256
+train_batch_size: 512
+eval_batch_size: 4096
 valid_metric: NDCG@10
