@@ -11,9 +11,34 @@ recbole_cdr.trainer.trainer
 ################################
 """
 
+import importlib
+
 import numpy as np
 from recbole.trainer import Trainer
 from recbole_cdr.utils import train_mode2state
+from tqdm import tqdm as _tqdm
+
+
+def _efficient_tqdm(*args, **kwargs):
+    """Render one responsive progress line with limited refresh overhead.
+
+    RecBole hardcodes ``ncols=100``. That wraps in narrow terminals and leaves
+    fragments of earlier updates on screen. Dynamic width keeps the bar on one
+    physical line, while a one-second refresh interval avoids excessive output
+    in terminals and notebook consoles.
+    """
+    kwargs.pop('ncols', None)
+    kwargs.setdefault('dynamic_ncols', True)
+    kwargs.setdefault('mininterval', 1.0)
+    kwargs.setdefault('leave', True)
+    return _tqdm(*args, **kwargs)
+
+
+# Trainer methods resolve ``tqdm`` from this module at runtime. Installing the
+# wrapper here covers both training and evaluation bars without copying the
+# version-specific RecBole training loop into RecBole-CDR.
+_recbole_trainer_module = importlib.import_module('recbole.trainer.trainer')
+_recbole_trainer_module.tqdm = _efficient_tqdm
 
 
 class CrossDomainTrainer(Trainer):

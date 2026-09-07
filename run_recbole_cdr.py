@@ -10,56 +10,31 @@ import torch
 from recbole_cdr.quick_start import run_recbole_cdr
 
 
-# ---------------------------------------------------------------------------
-# Dataset configuration
-#
-# DATASET_ROOT must be an ABSOLUTE path. It may point anywhere on the machine;
-# datasets do not need to be inside this project. It must contain one
-# subdirectory per dataset, for example:
-#
-#   DATASET_ROOT/
-#   |-- Book-Crossing/Book-Crossing.inter
-#   `-- Librarything/Librarything.inter
-#
-# Link files are resolved relative to DATASET_ROOT. Set either link file to
-# None when that type of cross-domain mapping is not used.
-#
-# Current pair: Book-Crossing -> Librarything
-#   DATASET_ROOT = Path('/absolute/path/to/datasets')
-#   SOURCE_DATASET = 'Book-Crossing'
-#   TARGET_DATASET = 'Librarything'
-#   SOURCE_ITEM_ID_FIELD = 'ISBN'
-#   TARGET_ITEM_ID_FIELD = 'book_name'
-#   ITEM_LINK_FILE = 'Book-Crossing_Librarything.link'
-#
-# To use MovieLens ml-1m -> ml-100k:
-#   DATASET_ROOT = Path('/absolute/path/to/movielens-datasets')
-#   SOURCE_DATASET = 'ml-1m'
-#   TARGET_DATASET = 'ml-100k'
-#   SOURCE_ITEM_ID_FIELD = 'item_id'
-#   TARGET_ITEM_ID_FIELD = 'item_id'
-#   ITEM_LINK_FILE = None
-#
-# To use Amazon Books -> Amazon Movies:
-#   DATASET_ROOT = Path('/absolute/path/to/amazon-datasets')
-#   SOURCE_DATASET = 'AmazonBooks'
-#   TARGET_DATASET = 'AmazonMov'
-#   SOURCE_ITEM_ID_FIELD = 'item_id'
-#   TARGET_ITEM_ID_FIELD = 'item_id'
-#   ITEM_LINK_FILE = None
-#
-# For the two examples above, each .inter file must use the columns
-# user_id, item_id, rating (timestamp may also be present but is not loaded).
-# ---------------------------------------------------------------------------
+# Dataset selection. Change only DATASET_PRESET to switch a complete set of
+# dataset properties (names, fields, filters, separators, and link files):
+#   'movielens'     -> ml-1m -> ml-100k
+#   'amazon'        -> AmazonBooks -> AmazonMov
+#   'book_crossing' -> Book-Crossing -> Librarything
+#   'douban'        -> DoubanBook -> DoubanMovie
+# You can also override it without editing this file, for example:
+#   python run_recbole_cdr.py --dataset_preset amazon
+DATASET_PRESET = 'book_crossing'
+
+# This must be an absolute path, but the datasets may live outside the project.
+# The selected preset expects its two dataset directories under this root.
 # DATASET_ROOT = Path('/content/drive/MyDrive/CDR-2026/recbole_cdr/dataset_example')
 # DATASET_ROOT = Path('/content/drive/MyDrive/CDR-2026-Data/dataset_example')
 DATASET_ROOT = Path('/Users/jing/Documents/PhD-CDR/20260828/RecBole-CDR/recbole_cdr/dataset_example')
-SOURCE_DATASET = 'Book-Crossing'
-TARGET_DATASET = 'Librarything'
-SOURCE_ITEM_ID_FIELD = 'ISBN'
-TARGET_ITEM_ID_FIELD = 'book_name'
-USER_LINK_FILE = None
-ITEM_LINK_FILE = 'Book-Crossing_Librarything.link'
+
+DATASET_PRESET_FILES = {
+    'movielens': 'movielens.yaml',
+    'amazon': 'amazon.yaml',
+    'book_crossing': 'book_crossing.yaml',
+    'douban': 'douban.yaml',
+}
+DATASET_CONFIG_DIR = (
+    Path(__file__).resolve().parent / 'recbole_cdr' / 'properties' / 'dataset'
+)
 
 # Compute configuration:
 #   'auto' -> use a CUDA GPU when available; otherwise use CPU
@@ -69,19 +44,15 @@ COMPUTE_DEVICE = 'auto'
 GPU_ID = '0'
 
 
-def _resolve_optional_path(path, dataset_root):
-    """Resolve a link path against the configured dataset root."""
-    if path is None:
-        return None
-    path = Path(path).expanduser()
-    return str(path if path.is_absolute() else dataset_root / path)
+def resolve_dataset_preset(dataset_preset, dataset_root):
+    """Return the selected YAML file and its validated absolute data root."""
+    if dataset_preset not in DATASET_PRESET_FILES:
+        raise ValueError(
+            'unknown dataset preset {!r}; choose from {}'.format(
+                dataset_preset, ', '.join(sorted(DATASET_PRESET_FILES))
+            )
+        )
 
-
-def build_dataset_config(dataset_root, source_dataset, target_dataset,
-                         source_item_id_field='item_id',
-                         target_item_id_field='item_id',
-                         user_link_file=None, item_link_file=None):
-    """Build one consistent configuration for both dataset domains."""
     dataset_root = Path(dataset_root).expanduser()
     if not dataset_root.is_absolute():
         raise ValueError(
@@ -89,30 +60,10 @@ def build_dataset_config(dataset_root, source_dataset, target_dataset,
             "'/data/recommendation-datasets'"
         )
     dataset_root = dataset_root.resolve()
-    return {
-        'source_domain': {
-            'dataset': source_dataset,
-            'data_path': str(dataset_root),
-            'USER_ID_FIELD': 'user_id',
-            'ITEM_ID_FIELD': source_item_id_field,
-            'RATING_FIELD': 'rating',
-            'load_col': {
-                'inter': ['user_id', source_item_id_field, 'rating'],
-            },
-        },
-        'target_domain': {
-            'dataset': target_dataset,
-            'data_path': str(dataset_root),
-            'USER_ID_FIELD': 'user_id',
-            'ITEM_ID_FIELD': target_item_id_field,
-            'RATING_FIELD': 'rating',
-            'load_col': {
-                'inter': ['user_id', target_item_id_field, 'rating'],
-            },
-        },
-        'user_link_file_path': _resolve_optional_path(user_link_file, dataset_root),
-        'item_link_file_path': _resolve_optional_path(item_link_file, dataset_root),
-    }
+    preset_file = DATASET_CONFIG_DIR / DATASET_PRESET_FILES[dataset_preset]
+    if not preset_file.is_file():
+        raise FileNotFoundError('dataset preset not found: {}'.format(preset_file))
+    return preset_file, dataset_root
 
 
 def build_compute_config(compute_device='auto', gpu_id='0'):
@@ -139,20 +90,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', '-m', type=str, default='AttentionDTCDR', help='name of models')
     parser.add_argument('--config_files', type=str, default=None, help='config files')
+    parser.add_argument('--dataset_preset', choices=tuple(DATASET_PRESET_FILES),
+                        default=DATASET_PRESET,
+                        help='complete source/target dataset configuration')
     parser.add_argument('--dataset_root', type=Path, default=DATASET_ROOT,
                         help='directory containing all dataset subdirectories')
-    parser.add_argument('--source_dataset', type=str, default=SOURCE_DATASET,
-                        help='source dataset directory and file prefix')
-    parser.add_argument('--target_dataset', type=str, default=TARGET_DATASET,
-                        help='target dataset directory and file prefix')
-    parser.add_argument('--source_item_id_field', type=str, default=SOURCE_ITEM_ID_FIELD,
-                        help='item ID column in the source interaction file')
-    parser.add_argument('--target_item_id_field', type=str, default=TARGET_ITEM_ID_FIELD,
-                        help='item ID column in the target interaction file')
-    parser.add_argument('--user_link_file', type=str, default=USER_LINK_FILE,
-                        help='user link file, absolute or relative to dataset_root')
-    parser.add_argument('--item_link_file', type=str, default=ITEM_LINK_FILE,
-                        help='item link file, absolute or relative to dataset_root')
     parser.add_argument('--compute_device', choices=('auto', 'cuda', 'cpu'),
                         default=COMPUTE_DEVICE,
                         help='auto-detect CUDA, require CUDA, or force CPU')
@@ -161,18 +103,20 @@ if __name__ == '__main__':
 
     args, _ = parser.parse_known_args()
 
-    config_file_list = args.config_files.strip().split(' ') if args.config_files else None
-    dataset_config = build_dataset_config(
-        dataset_root=args.dataset_root,
-        source_dataset=args.source_dataset,
-        target_dataset=args.target_dataset,
-        source_item_id_field=args.source_item_id_field,
-        target_item_id_field=args.target_item_id_field,
-        user_link_file=args.user_link_file,
-        item_link_file=args.item_link_file,
+    preset_file, dataset_root = resolve_dataset_preset(
+        args.dataset_preset, args.dataset_root
     )
+    config_file_list = [str(preset_file)]
+    if args.config_files:
+        config_file_list.extend(args.config_files.strip().split(' '))
+
     runtime_config = build_compute_config(args.compute_device, args.gpu_id)
-    config = {**dataset_config, **runtime_config}
+    config = {
+        'data_path': str(dataset_root),
+        'source_domain': {'data_path': str(dataset_root)},
+        'target_domain': {'data_path': str(dataset_root)},
+        **runtime_config,
+    }
     run_recbole_cdr(
         model=args.model,
         config_file_list=config_file_list,

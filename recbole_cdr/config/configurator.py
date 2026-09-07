@@ -97,6 +97,17 @@ class CDRConfig(Config):
             self.final_config_dict[domain]['data_path'] = os.path.join(
                 os.path.expanduser(data_path), dataset_name)
 
+        # Dataset presets may specify link files relative to the common data
+        # root. Resolve them here so changing the working directory does not
+        # change which file is loaded.
+        for link_key in ('user_link_file_path', 'item_link_file_path'):
+            link_path = self.final_config_dict.get(link_key)
+            if link_path and not os.path.isabs(link_path):
+                self.final_config_dict[link_key] = os.path.join(
+                    os.path.expanduser(self.final_config_dict['data_path']),
+                    link_path,
+                )
+
         self.final_config_dict['dataset'] = {'source_domain': source_dataset_name,
                                              'target_domain': target_dataset_name}
         return self.final_config_dict['dataset']

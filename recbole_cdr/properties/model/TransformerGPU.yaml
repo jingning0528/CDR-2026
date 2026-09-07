@@ -1,0 +1,14 @@
+# TransformerGPU model configuration (differential privacy disabled)
+embedding_size: 64
+learning_rate: 0.0005
+mlp_hidden_size: [64, 64]
+dropout_prob: 0.3
+alpha: 0.3
+base_model: NeuMF
+
+# embedding_size must be divisible by transformer_gpu_num_heads.
+transformer_gpu_num_heads: 8
+transformer_gpu_num_layers: 1
+transformer_gpu_dim_feedforward: 256
+transformer_gpu_dropout: 0.1
+transformer_gpu_activation: relu

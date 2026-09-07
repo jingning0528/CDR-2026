@@ -1,0 +1,37 @@
+# Amazon benchmark: Books (source) -> Movies (target)
+seed: 2022
+field_separator: "\t"
+user_link_file_path: ~
+item_link_file_path: ~
+
+source_domain:
+  dataset: AmazonBooks
+  USER_ID_FIELD: user_id
+  ITEM_ID_FIELD: item_id
+  RATING_FIELD: rating
+  TIME_FIELD: timestamp
+  NEG_PREFIX: neg_
+  LABEL_FIELD: label
+  load_col:
+    inter: [user_id, item_id, rating]
+  user_inter_num_interval: "[10,inf)"
+  item_inter_num_interval: "[10,inf)"
+  val_interval:
+    rating: "[3,inf)"
+  drop_filter_field: True
+
+target_domain:
+  dataset: AmazonMov
+  USER_ID_FIELD: user_id
+  ITEM_ID_FIELD: item_id
+  RATING_FIELD: rating
+  TIME_FIELD: timestamp
+  NEG_PREFIX: neg_
+  LABEL_FIELD: label
+  load_col:
+    inter: [user_id, item_id, rating]
+  user_inter_num_interval: "[10,inf)"
+  item_inter_num_interval: "[10,inf)"
+  val_interval:
+    rating: "[3,inf)"
+  drop_filter_field: True
