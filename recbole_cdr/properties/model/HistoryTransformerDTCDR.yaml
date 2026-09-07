@@ -6,8 +6,8 @@ dropout_prob: 0.3
 alpha: 0.3
 
 # embedding_size must be divisible by history_transformer_num_heads.
-history_transformer_num_heads: 4
-history_transformer_ffn_size: 256
+history_transformer_num_heads: 2
+history_transformer_ffn_size: 128
 history_transformer_dropout: 0.3
 
 # Candidate-to-history cross-attention uses one query over at most H keys.
