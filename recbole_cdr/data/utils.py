@@ -15,7 +15,6 @@ import importlib
 import os
 import pickle
 
-from recbole.data.dataloader import NegSampleEvalDataLoader
 from recbole.data.utils import load_split_dataloaders, save_split_dataloaders, create_samplers
 from recbole.utils import set_color
 from recbole.utils.argument_list import dataset_arguments
@@ -148,7 +147,7 @@ def get_dataloader(config, phase, domain='target'):
             return CrossDomainFullSortEvalDataLoader
         eval_strategy = config['eval_neg_sample_args']['strategy']
         if eval_strategy in {'none', 'by'}:
-            return NegSampleEvalDataLoader
+            return CrossDomainNegSampleEvalDataLoader
         elif eval_strategy == 'full':
             return FullSortEvalDataLoader
 
