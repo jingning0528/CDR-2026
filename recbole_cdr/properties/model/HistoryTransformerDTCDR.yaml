@@ -1,4 +1,5 @@
 # HistoryTransformerDTCDR model configuration
+train_epochs: ["TARGET:200"]
 embedding_size: 64
 learning_rate: 0.0005
 mlp_hidden_size: [64, 64]
