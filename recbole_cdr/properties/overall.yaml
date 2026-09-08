@@ -16,7 +16,7 @@ wandb_project: 'recbole_cdr'
 
 # training settings
 train_epochs: ["BOTH:200"]
-train_batch_size: 1024
+train_batch_size: 2048
 learner: adam
 learning_rate: 0.0005
 neg_sampling:
