@@ -4,7 +4,7 @@ from recbole.data.interaction import Interaction
 from recbole.utils import EvaluatorType
 
 from recbole_cdr.data.dataloader import _cat_interactions_recbole_1_0
-from recbole_cdr.trainer.trainer import CrossDomainTrainer
+from recbole_cdr.trainer.trainer import CrossDomainTrainer, DCDCSRTrainer
 
 
 def test_sampled_eval_concat_uses_raw_interaction_tensors():
@@ -60,3 +60,8 @@ def test_sampled_eval_uses_target_domain_item_field():
     assert scores[0, 2] == torch.tensor(0.8)
     assert scores[0, 4] == torch.tensor(0.2)
     assert scores[1, 3] == torch.tensor(0.6)
+
+
+def test_all_cross_domain_trainers_support_sampled_evaluation():
+    assert CrossDomainTrainer._neg_sample_batch_eval is \
+        DCDCSRTrainer._neg_sample_batch_eval

@@ -43,16 +43,8 @@ _recbole_trainer_module = importlib.import_module('recbole.trainer.trainer')
 _recbole_trainer_module.tqdm = _efficient_tqdm
 
 
-class CrossDomainTrainer(Trainer):
-    r"""Trainer for training cross-domain models. It contains four training mode: SOURCE, TARGET, BOTH, OVERLAP
-    which can be set by the parameter of `train_epochs`
-    """
-
-    def __init__(self, config, model):
-        super(CrossDomainTrainer, self).__init__(config, model)
-        self.train_modes = config['train_modes']
-        self.train_epochs = config['epoch_num']
-        self.split_valid_flag = config['source_split']
+class _CrossDomainSampledEvalMixin:
+    """Use target-domain fields for sampled cross-domain evaluation."""
 
     def _neg_sample_batch_eval(self, batched_data):
         """Evaluate sampled target items with RecBole 1.0.1 field names.
@@ -82,6 +74,18 @@ class CrossDomainTrainer(Trainer):
         )
         scores[row_idx, col_idx] = origin_scores
         return interaction, scores, positive_u, positive_i
+
+
+class CrossDomainTrainer(_CrossDomainSampledEvalMixin, Trainer):
+    r"""Trainer for training cross-domain models. It contains four training mode: SOURCE, TARGET, BOTH, OVERLAP
+    which can be set by the parameter of `train_epochs`
+    """
+
+    def __init__(self, config, model):
+        super(CrossDomainTrainer, self).__init__(config, model)
+        self.train_modes = config['train_modes']
+        self.train_epochs = config['epoch_num']
+        self.split_valid_flag = config['source_split']
 
     def _reinit(self, phase):
         """Reset the parameters when start a new training phase.
@@ -132,7 +136,7 @@ class CrossDomainTrainer(Trainer):
         return self.best_valid_score, self.best_valid_result
 
 
-class DCDCSRTrainer(Trainer):
+class DCDCSRTrainer(_CrossDomainSampledEvalMixin, Trainer):
     r"""Trainer for training DCDCSR models."""
 
     def __init__(self, config, model):
