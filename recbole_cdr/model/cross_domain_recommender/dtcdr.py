@@ -175,30 +175,16 @@ class DTCDR(CrossDomainRecommender):
         return output
 
     def calculate_loss(self, interaction):
-        source_user = interaction[self.SOURCE_USER_ID]
-        source_item = interaction[self.SOURCE_ITEM_ID]
-        source_label = interaction[self.SOURCE_LABEL]
-
         target_user = interaction[self.TARGET_USER_ID]
         target_item = interaction[self.TARGET_ITEM_ID]
         target_label = interaction[self.TARGET_LABEL]
 
         if self.base_model == 'NeuMF':
-            source_output = self.neumf_forward(source_user, source_item, 'source')
             target_output = self.neumf_forward(target_user, target_item, 'target')
-
-            loss_s = self.loss(source_output, source_label)
-            loss_t = self.loss(target_output, target_label)
-
-            return loss_s * self.alpha + loss_t * (1 - self.alpha)
         else:
-            source_output = self.dmf_forward(source_user, source_item, 'source')
-            target_output = self.dmf_forward(target_user, target_item, 'source')
+            target_output = self.dmf_forward(target_user, target_item, 'target')
 
-            loss_s = self.loss(source_output, source_label)
-            loss_t = self.loss(target_output, target_label)
-
-            return loss_s * self.alpha + loss_t * (1 - self.alpha)
+        return self.loss(target_output, target_label)
 
     def predict(self, interaction):
         user = interaction[self.TARGET_USER_ID]
