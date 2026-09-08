@@ -14,7 +14,9 @@ recbole_cdr.trainer.trainer
 import importlib
 
 import numpy as np
+import torch
 from recbole.trainer import Trainer
+from recbole.utils import EvaluatorType
 from recbole_cdr.utils import train_mode2state
 from tqdm import tqdm as _tqdm
 
@@ -51,6 +53,35 @@ class CrossDomainTrainer(Trainer):
         self.train_modes = config['train_modes']
         self.train_epochs = config['epoch_num']
         self.split_valid_flag = config['source_split']
+
+    def _neg_sample_batch_eval(self, batched_data):
+        """Evaluate sampled target items with RecBole 1.0.1 field names.
+
+        RecBole's generic implementation indexes the interaction with the
+        top-level ``ITEM_ID_FIELD``. Cross-domain configs keep that field in
+        ``target_domain``, so the top-level value is ``None`` and RecBole
+        accidentally creates a nested Interaction. The cross-domain model
+        already exposes the fully prefixed target item field; use it directly.
+        """
+        interaction, row_idx, positive_u, positive_i = batched_data
+        batch_size = interaction.length
+        if batch_size <= self.test_batch_size:
+            origin_scores = self.model.predict(interaction.to(self.device))
+        else:
+            origin_scores = self._spilt_predict(interaction, batch_size)
+
+        if self.config['eval_type'] == EvaluatorType.VALUE:
+            return interaction, origin_scores, positive_u, positive_i
+
+        col_idx = interaction[self.model.TARGET_ITEM_ID]
+        batch_user_num = int(positive_u[-1]) + 1
+        scores = torch.full(
+            (batch_user_num, self.tot_item_num),
+            -np.inf,
+            device=self.device,
+        )
+        scores[row_idx, col_idx] = origin_scores
+        return interaction, scores, positive_u, positive_i
 
     def _reinit(self, phase):
         """Reset the parameters when start a new training phase.
