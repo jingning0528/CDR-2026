@@ -17,9 +17,67 @@ import torch
 
 from recbole.data.interaction import Interaction
 from recbole.data.dataloader.abstract_dataloader import AbstractDataLoader
-from recbole.data.dataloader.general_dataloader import TrainDataLoader, FullSortEvalDataLoader
+from recbole.data.dataloader.general_dataloader import (
+    FullSortEvalDataLoader,
+    NegSampleEvalDataLoader,
+    TrainDataLoader,
+)
 
 from recbole_cdr.utils import CrossDomainDataLoaderState
+
+
+def _cat_interactions_recbole_1_0(interactions):
+    """Concatenate sampled interactions through their raw tensor mappings."""
+    if not isinstance(interactions, (list, tuple)):
+        raise TypeError('interactions must be a list or tuple')
+    if not interactions:
+        raise ValueError('interactions must not be empty')
+
+    columns = list(interactions[0].interaction)
+    expected_columns = set(columns)
+    for interaction in interactions:
+        if set(interaction.interaction) != expected_columns:
+            raise ValueError('all interactions must contain the same fields')
+
+    return Interaction({
+        column: torch.cat([
+            interaction.interaction[column] for interaction in interactions
+        ])
+        for column in columns
+    })
+
+
+class CrossDomainNegSampleEvalDataLoader(NegSampleEvalDataLoader):
+    """RecBole 1.0.1-compatible loader for sampled ranking evaluation."""
+
+    def _next_batch_data(self):
+        if self.neg_sample_args['strategy'] != 'by':
+            return super()._next_batch_data()
+
+        uid_list = self.uid_list[self.pr:self.pr + self.step]
+        data_list = []
+        idx_list = []
+        positive_u = []
+        positive_i = torch.tensor([], dtype=torch.int64)
+
+        for idx, uid in enumerate(uid_list):
+            index = self.uid2index[uid]
+            user_data = self.dataset[index]
+            data_list.append(self._neg_sampling(user_data))
+
+            positive_num = self.uid2items_num[uid]
+            idx_list.extend([idx] * (positive_num * self.times))
+            positive_u.extend([idx] * positive_num)
+            positive_i = torch.cat(
+                (positive_i, user_data.interaction[self.iid_field]), dim=0
+            )
+
+        cur_data = _cat_interactions_recbole_1_0(data_list)
+        idx_list = torch.as_tensor(idx_list, dtype=torch.int64)
+        positive_u = torch.as_tensor(positive_u, dtype=torch.int64)
+        self.pr += self.step
+
+        return cur_data, idx_list, positive_u, positive_i
 
 
 class OverlapDataloader(AbstractDataLoader):

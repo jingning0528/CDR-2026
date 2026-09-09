@@ -12,11 +12,39 @@ recbole_cdr.trainer.trainer
 """
 
 import numpy as np
+import torch
 from recbole.trainer import Trainer
+from recbole.utils import EvaluatorType
 from recbole_cdr.utils import train_mode2state
 
 
-class CrossDomainTrainer(Trainer):
+class _CrossDomainSampledEvalMixin:
+    """Use target-domain fields for sampled cross-domain evaluation."""
+
+    def _neg_sample_batch_eval(self, batched_data):
+        interaction, row_idx, positive_u, positive_i = batched_data
+        batch_size = interaction.length
+        if batch_size <= self.test_batch_size:
+            origin_scores = self.model.predict(interaction.to(self.device))
+        else:
+            origin_scores = self._spilt_predict(interaction, batch_size)
+
+        if self.config['eval_type'] == EvaluatorType.VALUE:
+            return interaction, origin_scores, positive_u, positive_i
+
+        # RecBole 1.0.1's top-level ITEM_ID_FIELD is None for CDR configs.
+        col_idx = interaction[self.model.TARGET_ITEM_ID]
+        batch_user_num = int(positive_u[-1]) + 1
+        scores = torch.full(
+            (batch_user_num, self.tot_item_num),
+            -np.inf,
+            device=self.device,
+        )
+        scores[row_idx, col_idx] = origin_scores
+        return interaction, scores, positive_u, positive_i
+
+
+class CrossDomainTrainer(_CrossDomainSampledEvalMixin, Trainer):
     r"""Trainer for training cross-domain models. It contains four training mode: SOURCE, TARGET, BOTH, OVERLAP
     which can be set by the parameter of `train_epochs`
     """
@@ -76,7 +104,7 @@ class CrossDomainTrainer(Trainer):
         return self.best_valid_score, self.best_valid_result
 
 
-class DCDCSRTrainer(Trainer):
+class DCDCSRTrainer(_CrossDomainSampledEvalMixin, Trainer):
     r"""Trainer for training DCDCSR models."""
 
     def __init__(self, config, model):
