@@ -22,7 +22,7 @@ learning_rate: 0.001
 neg_sampling:
   uniform: 1
 eval_step: 10
-stopping_step: 2
+stopping_step: 3
 clip_grad_norm: ~
 # clip_grad_norm:  {'max_norm': 5, 'norm_type': 2}
 weight_decay: 0.0
@@ -35,7 +35,7 @@ eval_args:
   split_valid: {'RS':[0.8,0.2]}
   group_by: user
   order: RO
-  mode: full
+  mode: uni100
 repeatable: False
 metrics: ["Recall","MRR","NDCG","Hit","Precision"]
 topk: [10, 20, 50]
