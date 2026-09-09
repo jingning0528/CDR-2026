@@ -6,6 +6,8 @@ general_yaml
 docs/
 .vscode/
 dataset/
+!recbole_cdr/properties/dataset/
+!recbole_cdr/properties/dataset/*.yaml
 
 # Local cross-domain recommendation datasets
 /recbole_cdr/dataset_example/AmazonBooks/
