@@ -76,8 +76,6 @@ target_domain:
   val_interval:
     rating: "[5,inf)"
   drop_filter_field: True
-# training and evaluation
-train_epochs: ["BOTH:500"]
-# train_batch_size: 4096
+# evaluation defaults
 eval_batch_size: 4096
 valid_metric: NDCG@10
