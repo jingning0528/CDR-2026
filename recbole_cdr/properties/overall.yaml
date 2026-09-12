@@ -18,11 +18,11 @@ wandb_project: 'recbole_cdr'
 train_epochs: ["BOTH:300"]
 train_batch_size: 4096
 learner: adam
-learning_rate: 0.001
+learning_rate: 0.0003
 neg_sampling:
   uniform: 1
-eval_step: 10
-stopping_step: 3
+eval_step: 20
+stopping_step: 2
 clip_grad_norm: ~
 # clip_grad_norm:  {'max_norm': 5, 'norm_type': 2}
 weight_decay: 0.0
