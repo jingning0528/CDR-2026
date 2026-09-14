@@ -15,7 +15,7 @@ transformer_dropout: 0.3
 
 # Optional interaction-level DP preprocessing for source training data only.
 source_dp_enabled: true
-dp_epsilon: 1.0
+dp_epsilon: 10.0
 dp_delta: 1e-5
 dp_projection_dim: 256
 dp_projection_density: 0.1
