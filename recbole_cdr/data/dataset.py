@@ -23,6 +23,7 @@ from scipy.sparse import coo_matrix
 from recbole.data.dataset import Dataset
 from recbole.utils import FeatureSource, FeatureType, set_color
 from recbole_cdr.utils import get_keys_from_chainmap_by_order
+from recbole_cdr.data.source_dp import privatize_source_dataset
 
 
 class CrossDomainSingleDataset(Dataset):
@@ -559,13 +560,26 @@ class CrossDomainDataset:
         if not source_split_flag:
             source_domain_train_dataset = self.source_domain_dataset
             source_domain_train_dataset._change_feat_format()
-
-            return [source_domain_train_dataset, None, target_domain_train_dataset,
-                    target_domain_valid_dataset, target_domain_test_dataset]
+            source_domain_valid_dataset = None
         else:
             source_domain_train_dataset, source_domain_valid_dataset = self.source_domain_dataset.split_train_valid()
-            return [source_domain_train_dataset, source_domain_valid_dataset, target_domain_train_dataset,
-                    target_domain_valid_dataset, target_domain_test_dataset]
+
+        if self.config['source_dp_enabled']:
+            source_domain_train_dataset = privatize_source_dataset(
+                source_domain_train_dataset,
+                self.num_total_user,
+                self.num_total_item,
+                self.config,
+                self.logger,
+            )
+            # Source negative sampling reads this canonical training view.
+            # Point it at the DP copy so raw source interactions cannot affect
+            # training after the mechanism. Prebuilt source validation and all
+            # target splits remain separate, unchanged objects.
+            self.source_domain_dataset = source_domain_train_dataset
+
+        return [source_domain_train_dataset, source_domain_valid_dataset, target_domain_train_dataset,
+                target_domain_valid_dataset, target_domain_test_dataset]
 
     def inter_matrix(self, form='coo', value_field=None, domain='source'):
         """Get sparse matrix that describe interactions between user_id and item_id.
