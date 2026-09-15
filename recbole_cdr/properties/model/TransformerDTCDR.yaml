@@ -20,6 +20,6 @@ dp_delta: 1e-5
 dp_projection_dim: 256
 dp_projection_density: 0.1
 dp_clip_norm: 1.0
-dp_output_topk: 50
+dp_output_topk: 100
 dp_noise_multiplier: 0.0
 dp_seed: 2022
