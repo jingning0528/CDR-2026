@@ -101,9 +101,12 @@ def privatize_source_dataset(dataset, user_num, item_num, config, logger):
     density = float(config['dp_projection_density'])
     clip_norm = float(config['dp_clip_norm'])
     output_topk = int(config['dp_output_topk'])
+    noise_multiplier = float(config['dp_noise_multiplier'])
     seed = int(config['dp_seed'])
     if output_topk < 0:
         raise ValueError('dp_output_topk must be non-negative.')
+    if noise_multiplier < 0:
+        raise ValueError('dp_noise_multiplier must be non-negative.')
 
     projection_rng = np.random.RandomState(seed)
     # A configured/public seed may safely define the projection, but must not
@@ -132,7 +135,14 @@ def privatize_source_dataset(dataset, user_num, item_num, config, logger):
     # hence one projection row is added to/removed from one user's Z row.
     row_norms = np.sqrt(projection.multiply(projection).sum(axis=1)).A1
     sensitivity = float(row_norms.max())
-    sigma = calibrate_gaussian_sigma(epsilon, delta, sensitivity)
+    calibrated_sigma = calibrate_gaussian_sigma(epsilon, delta, sensitivity)
+    sigma = calibrated_sigma * noise_multiplier
+    if noise_multiplier < 1.0:
+        logger.warning(
+            'dp_noise_multiplier is %.12g; this preprocessing does not satisfy '
+            'the configured (epsilon, delta) guarantee. Use 1.0 or greater for DP.',
+            noise_multiplier,
+        )
 
     output_users, output_items = [], []
     max_items_per_user = min(output_topk, len(source_item_ids))
@@ -165,6 +175,8 @@ def privatize_source_dataset(dataset, user_num, item_num, config, logger):
     logger.info('projection dimension: %s', projection_dim)
     logger.info('output top-k: %s', output_topk)
     logger.info('interaction-level L2 sensitivity: %.12g', sensitivity)
-    logger.info('calculated noise sigma: %.12g', sigma)
+    logger.info('calibrated noise sigma: %.12g', calibrated_sigma)
+    logger.info('noise multiplier: %.12g', noise_multiplier)
+    logger.info('applied noise sigma: %.12g', sigma)
     logger.info('number of source interactions before and after DP: %d -> %d', before, len(output_users))
     return private_dataset
