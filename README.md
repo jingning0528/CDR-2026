@@ -1,5 +1,7 @@
 conda activate "RecBole-CDR-main 2"
-python run_recbole_cdr.py
+python -u run_recbole_cdr.py \
+  --model DTCDR \
+  --dataset_preset movielens
 
 - CMF
 Evaluate   : 100%|██████████████████████████████████████████████| 315/315 [00:00<00:00, 3554.29it/s]
