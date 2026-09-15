@@ -4,6 +4,7 @@
 
 import argparse
 import copy
+from datetime import datetime
 from pathlib import Path
 
 import torch
@@ -44,8 +45,8 @@ DATASET_CONFIG_DIR = (
 
 COMPUTE_DEVICE = 'auto'
 GPU_ID = '0'
-DP_SEEDS = (2023, 2024)
-DP_EPSILONS = (1.0, 2.0, 5.0, 10.0)
+DP_SEEDS = (2022, 2023, 2024)
+DP_EPSILONS = (0.1, 100.0)
 
 
 def resolve_dataset_preset(dataset_preset, dataset_root):
@@ -141,11 +142,13 @@ if __name__ == '__main__':
         for dp_seed in args.dp_seeds:
             for dp_epsilon in args.dp_epsilons:
                 epsilon_name = format_number_for_filename(dp_epsilon)
-                log_name = '{}-{}-{}-{}.log'.format(
+                run_time = datetime.now().strftime('%Y%m%d-%H%M%S-%f')
+                log_name = '{}-{}-{}-{}-{}.log'.format(
                     args.dataset_preset,
                     args.model,
                     dp_seed,
                     epsilon_name,
+                    run_time,
                 )
                 run_config = copy.deepcopy(config)
                 run_config.update({
