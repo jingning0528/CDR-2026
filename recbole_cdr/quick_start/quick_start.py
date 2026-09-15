@@ -8,6 +8,7 @@ recbole_cdr.quick_start
 """
 import logging
 from logging import getLogger
+from pathlib import Path
 import torch
 
 from recbole.utils import init_logger, init_seed, set_color
@@ -17,7 +18,56 @@ from recbole_cdr.data import create_dataset, data_preparation
 from recbole_cdr.utils import get_model, get_trainer
 
 
-def run_recbole_cdr(model=None, config_file_list=None, config_dict=None, saved=True):
+def _init_logger_with_optional_path(config, log_file_path=None):
+    """Initialize RecBole logging, optionally replacing its timestamped file."""
+    if log_file_path is None:
+        init_logger(config)
+        return
+
+    # A DP grid runs multiple experiments in one process. logging.basicConfig,
+    # which RecBole uses, is otherwise a no-op after the first experiment.
+    root_logger = getLogger()
+    for handler in list(root_logger.handlers):
+        root_logger.removeHandler(handler)
+        handler.close()
+
+    init_logger(config)
+    recbole_file_handlers = [
+        handler for handler in root_logger.handlers
+        if isinstance(handler, logging.FileHandler)
+    ]
+    if not recbole_file_handlers:
+        raise RuntimeError('RecBole logger did not create a file handler.')
+
+    template = recbole_file_handlers[0]
+    formatter = template.formatter
+    filters = list(template.filters)
+    level = template.level
+    for handler in recbole_file_handlers:
+        root_logger.removeHandler(handler)
+        default_path = Path(handler.baseFilename)
+        handler.close()
+        # Avoid leaving an unused timestamp-named file beside the requested log.
+        if default_path.exists() and default_path.stat().st_size == 0:
+            default_path.unlink()
+
+    log_file_path = Path(log_file_path)
+    log_file_path.parent.mkdir(parents=True, exist_ok=True)
+    file_handler = logging.FileHandler(str(log_file_path), mode='w')
+    file_handler.setLevel(level)
+    file_handler.setFormatter(formatter)
+    for log_filter in filters:
+        file_handler.addFilter(log_filter)
+    root_logger.addHandler(file_handler)
+
+
+def run_recbole_cdr(
+    model=None,
+    config_file_list=None,
+    config_dict=None,
+    saved=True,
+    log_file_path=None,
+):
     r""" A fast running api, which includes the complete process of
     training and testing a model on a specified dataset
 
@@ -32,7 +82,7 @@ def run_recbole_cdr(model=None, config_file_list=None, config_dict=None, saved=T
 
     init_seed(config['seed'], config['reproducibility'])
     # logger initialization
-    init_logger(config)
+    _init_logger_with_optional_path(config, log_file_path)
     logger = getLogger()
     logger.info(config)
 

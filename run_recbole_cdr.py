@@ -3,6 +3,7 @@
 # @Email  : zhlin@ruc.edu.cn
 
 import argparse
+import copy
 from pathlib import Path
 
 import torch
@@ -43,6 +44,8 @@ DATASET_CONFIG_DIR = (
 
 COMPUTE_DEVICE = 'auto'
 GPU_ID = '0'
+DP_SEEDS = (2023, 2024)
+DP_EPSILONS = (1.0, 2.0, 5.0, 10.0)
 
 
 def resolve_dataset_preset(dataset_preset, dataset_root):
@@ -84,6 +87,11 @@ def build_compute_config(compute_device='auto', gpu_id='0'):
     return {'use_gpu': use_gpu, 'gpu_id': str(gpu_id)}
 
 
+def format_number_for_filename(value):
+    """Format a numeric DP setting without unnecessary trailing zeros."""
+    return '{:g}'.format(value)
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', '-m', type=str, default='AttentionDTCDR',
@@ -100,6 +108,14 @@ if __name__ == '__main__':
                         help='auto-detect CUDA, require CUDA, or force CPU')
     parser.add_argument('--gpu_id', type=str, default=GPU_ID,
                         help='CUDA GPU index used when a GPU is selected')
+    parser.add_argument('--dp_grid', action='store_true',
+                        help='run the configured DP seed/epsilon grid')
+    parser.add_argument('--dp_seeds', type=int, nargs='+', default=DP_SEEDS,
+                        help='DP projection seeds used with --dp_grid')
+    parser.add_argument('--dp_epsilons', type=float, nargs='+', default=DP_EPSILONS,
+                        help='epsilon values used with --dp_grid')
+    parser.add_argument('--dp_log_dir', type=Path, default=Path('log/dp_grid'),
+                        help='directory for explicitly named DP-grid logs')
 
     args, _ = parser.parse_known_args()
     preset_file, dataset_root = resolve_dataset_preset(
@@ -115,8 +131,31 @@ if __name__ == '__main__':
         'target_domain': {'data_path': str(dataset_root)},
         **build_compute_config(args.compute_device, args.gpu_id),
     }
-    run_recbole_cdr(
-        model=args.model,
-        config_file_list=config_file_list,
-        config_dict=config,
-    )
+    if not args.dp_grid:
+        run_recbole_cdr(
+            model=args.model,
+            config_file_list=config_file_list,
+            config_dict=config,
+        )
+    else:
+        for dp_seed in args.dp_seeds:
+            for dp_epsilon in args.dp_epsilons:
+                epsilon_name = format_number_for_filename(dp_epsilon)
+                log_name = '{}-{}-{}-{}.log'.format(
+                    args.dataset_preset,
+                    args.model,
+                    dp_seed,
+                    epsilon_name,
+                )
+                run_config = copy.deepcopy(config)
+                run_config.update({
+                    'source_dp_enabled': True,
+                    'dp_seed': dp_seed,
+                    'dp_epsilon': dp_epsilon,
+                })
+                run_recbole_cdr(
+                    model=args.model,
+                    config_file_list=config_file_list,
+                    config_dict=run_config,
+                    log_file_path=args.dp_log_dir / log_name,
+                )
