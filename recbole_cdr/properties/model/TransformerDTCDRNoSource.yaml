@@ -1,0 +1,18 @@
+# Target-only source-token ablation for TransformerDTCDR.
+train_epochs: ["TARGET:400"]
+train_batch_size: 4096
+embedding_size: 64
+learning_rate: 0.0005
+mlp_hidden_size: [64, 64]
+dropout_prob: 0.3
+alpha: 0.0
+base_model: NeuMF
+
+# Keep these identical to the corresponding TransformerDTCDR experiment.
+transformer_num_heads: 4
+transformer_num_layers: 1
+transformer_dim_feedforward: 256
+transformer_dropout: 0.3
+
+# Source preprocessing is unnecessary because source batches are never used.
+source_dp_enabled: false

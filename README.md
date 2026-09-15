@@ -1,6 +1,6 @@
 conda activate "RecBole-CDR-main 2"
 python -u run_recbole_cdr.py \
-  --model DTCDR \
+  --model TransformerDTCDR \
   --dataset_preset movielens
 
 - CMF
