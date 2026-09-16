@@ -45,8 +45,8 @@ DATASET_CONFIG_DIR = (
 
 COMPUTE_DEVICE = 'auto'
 GPU_ID = '0'
-DP_SEEDS = (2024, 2022)
-DP_EPSILONS = (5.0, 1.0)
+DP_SEEDS = (2022)
+DP_EPSILONS = (0.1, 1.0, 10.0, 100.0)
 
 
 def resolve_dataset_preset(dataset_preset, dataset_root):
@@ -93,6 +93,13 @@ def format_number_for_filename(value):
     return '{:g}'.format(value)
 
 
+def as_grid_values(value):
+    """Allow a grid default to be either one value or a sequence of values."""
+    if isinstance(value, (list, tuple)):
+        return value
+    return (value,)
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', '-m', type=str, default='AttentionDTCDR',
@@ -111,9 +118,11 @@ if __name__ == '__main__':
                         help='CUDA GPU index used when a GPU is selected')
     parser.add_argument('--dp_grid', action='store_true',
                         help='run the configured DP seed/epsilon grid')
-    parser.add_argument('--dp_seeds', type=int, nargs='+', default=DP_SEEDS,
+    parser.add_argument('--dp_seeds', type=int, nargs='+',
+                        default=as_grid_values(DP_SEEDS),
                         help='DP projection seeds used with --dp_grid')
-    parser.add_argument('--dp_epsilons', type=float, nargs='+', default=DP_EPSILONS,
+    parser.add_argument('--dp_epsilons', type=float, nargs='+',
+                        default=as_grid_values(DP_EPSILONS),
                         help='epsilon values used with --dp_grid')
     parser.add_argument('--dp_log_dir', type=Path, default=Path('log/dp_grid'),
                         help='directory for explicitly named DP-grid logs')
