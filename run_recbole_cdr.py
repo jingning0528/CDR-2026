@@ -45,8 +45,8 @@ DATASET_CONFIG_DIR = (
 
 COMPUTE_DEVICE = 'auto'
 GPU_ID = '0'
-DP_SEEDS = (2022, 2023, 2024)
-DP_EPSILONS = (0.1, 100.0)
+DP_SEEDS = (2024)
+DP_EPSILONS = (5.0)
 
 
 def resolve_dataset_preset(dataset_preset, dataset_root):
