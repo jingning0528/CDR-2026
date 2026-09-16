@@ -22,4 +22,4 @@ dp_projection_density: 0.1
 dp_clip_norm: 1.0
 dp_output_topk: 200
 dp_noise_multiplier: 0.0
-dp_seed: 2024
+dp_seed: 2022
