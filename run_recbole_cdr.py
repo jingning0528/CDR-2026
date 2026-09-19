@@ -46,6 +46,7 @@ DATASET_CONFIG_DIR = (
 COMPUTE_DEVICE = 'auto'
 GPU_ID = '0'
 DP_SEEDS = (2022)
+DP_NOISE_SEEDS = (2022)
 DP_EPSILONS = (0.1, 1.0, 10.0, 100.0)
 
 
@@ -121,6 +122,9 @@ if __name__ == '__main__':
     parser.add_argument('--dp_seeds', type=int, nargs='+',
                         default=as_grid_values(DP_SEEDS),
                         help='DP projection seeds used with --dp_grid')
+    parser.add_argument('--dp_noise_seeds', type=int, nargs='+',
+                        default=as_grid_values(DP_NOISE_SEEDS),
+                        help='Gaussian noise seeds used with --dp_grid')
     parser.add_argument('--dp_epsilons', type=float, nargs='+',
                         default=as_grid_values(DP_EPSILONS),
                         help='epsilon values used with --dp_grid')
@@ -149,25 +153,31 @@ if __name__ == '__main__':
         )
     else:
         for dp_seed in args.dp_seeds:
-            for dp_epsilon in args.dp_epsilons:
-                epsilon_name = format_number_for_filename(dp_epsilon)
-                run_time = datetime.now().strftime('%Y%m%d-%H%M%S-%f')
-                log_name = '{}-{}-{}-{}-{}.log'.format(
-                    args.dataset_preset,
-                    args.model,
-                    dp_seed,
-                    epsilon_name,
-                    run_time,
-                )
-                run_config = copy.deepcopy(config)
-                run_config.update({
-                    'source_dp_enabled': True,
-                    'dp_seed': dp_seed,
-                    'dp_epsilon': dp_epsilon,
-                })
-                run_recbole_cdr(
-                    model=args.model,
-                    config_file_list=config_file_list,
-                    config_dict=run_config,
-                    log_file_path=args.dp_log_dir / log_name,
-                )
+            for dp_noise_seed in args.dp_noise_seeds:
+                for dp_epsilon in args.dp_epsilons:
+                    epsilon_name = format_number_for_filename(dp_epsilon)
+                    run_time = datetime.now().strftime('%Y%m%d-%H%M%S-%f')
+                    log_name = '{}-{}-projection_{}-noise_{}-epsilon_{}-{}.log'.format(
+                        args.dataset_preset,
+                        args.model,
+                        dp_seed,
+                        dp_noise_seed,
+                        epsilon_name,
+                        run_time,
+                    )
+                    run_config = copy.deepcopy(config)
+                    run_config.update({
+                        'source_dp_enabled': True,
+                        'dp_seed': dp_seed,
+                        'dp_noise_seed': dp_noise_seed,
+                        'dp_epsilon': dp_epsilon,
+                        'dp_topk_output_dir': str(
+                            args.dp_log_dir / 'topk' / args.dataset_preset / args.model
+                        ),
+                    })
+                    run_recbole_cdr(
+                        model=args.model,
+                        config_file_list=config_file_list,
+                        config_dict=run_config,
+                        log_file_path=args.dp_log_dir / log_name,
+                    )

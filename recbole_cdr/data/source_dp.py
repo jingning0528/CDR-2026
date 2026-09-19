@@ -7,7 +7,9 @@ such row, so its L2 sensitivity is at most ``clip_norm``. Everything after the
 Gaussian mechanism is post-processing.
 """
 
+import json
 import math
+from pathlib import Path
 
 import numpy as np
 import torch
@@ -51,6 +53,21 @@ def calibrate_gaussian_sigma(epsilon, delta, sensitivity):
         else:
             high = middle
     return high * sensitivity
+
+
+def _set_retention(reference, comparison):
+    """Return the fraction of a nonempty reference set retained."""
+    if not reference:
+        return None
+    return len(reference & comparison) / len(reference)
+
+
+def _jaccard_similarity(left, right):
+    """Return Jaccard similarity, or None when both sets are empty."""
+    union = left | right
+    if not union:
+        return None
+    return len(left & right) / len(union)
 
 
 def _sparse_projection(
@@ -103,15 +120,17 @@ def privatize_source_dataset(dataset, user_num, item_num, config, logger):
     output_topk = int(config['dp_output_topk'])
     noise_multiplier = float(config['dp_noise_multiplier'])
     seed = int(config['dp_seed'])
+    noise_seed = int(config['dp_noise_seed'])
+    topk_output_dir = config['dp_topk_output_dir']
     if output_topk < 0:
         raise ValueError('dp_output_topk must be non-negative.')
     if noise_multiplier < 0:
         raise ValueError('dp_noise_multiplier must be non-negative.')
 
     projection_rng = np.random.RandomState(seed)
-    # A configured/public seed may safely define the projection, but must not
-    # make DP noise predictable. default_rng() obtains fresh OS entropy.
-    noise_rng = np.random.default_rng()
+    # Keep projection and noise randomness independent so repeated overlap
+    # experiments can vary either one without changing the other.
+    noise_rng = np.random.default_rng(noise_seed)
     users = dataset.inter_feat[dataset.uid_field].numpy().astype(np.int64, copy=False)
     items = dataset.inter_feat[dataset.iid_field].numpy().astype(np.int64, copy=False)
     before = len(users)
@@ -147,12 +166,31 @@ def privatize_source_dataset(dataset, user_num, item_num, config, logger):
     output_users, output_items = [], []
     max_items_per_user = min(output_topk, len(source_item_ids))
     source_item_ids = np.asarray(source_item_ids, dtype=np.int64)
+    original_by_user = {
+        user_id: set(x.getrow(user_id).indices.tolist())
+        for user_id in source_user_ids
+    }
+    baseline_topk_by_user = {}
+    private_topk_by_user = {}
+    dp_overlaps = []
+    dp_jaccards = []
+    reconstruction_overlaps = []
     for user_id in source_user_ids:
         vector = projected.getrow(user_id).toarray().ravel()
         private_vector = vector + noise_rng.normal(0.0, sigma, size=projection_dim)
 
         # Decode one row at a time: memory is O(item_num + projection nnz), not
         # O(user_num * item_num).  Top-k and positivity depend only on DP output.
+        baseline_scores = projection.dot(vector)
+        baseline_candidates = source_item_ids[baseline_scores[source_item_ids] > 0.0]
+        if max_items_per_user == 0:
+            baseline_candidates = baseline_candidates[:0]
+        elif len(baseline_candidates) > max_items_per_user:
+            keep = np.argpartition(
+                baseline_scores[baseline_candidates], -max_items_per_user
+            )[-max_items_per_user:]
+            baseline_candidates = baseline_candidates[keep]
+
         scores = projection.dot(private_vector)
         candidates = source_item_ids[scores[source_item_ids] > 0.0]
         if max_items_per_user == 0:
@@ -160,6 +198,22 @@ def privatize_source_dataset(dataset, user_num, item_num, config, logger):
         elif len(candidates) > max_items_per_user:
             keep = np.argpartition(scores[candidates], -max_items_per_user)[-max_items_per_user:]
             candidates = candidates[keep]
+
+        baseline_set = set(baseline_candidates.tolist())
+        private_set = set(candidates.tolist())
+        baseline_topk_by_user[user_id] = baseline_set
+        private_topk_by_user[user_id] = private_set
+        dp_overlap = _set_retention(baseline_set, private_set)
+        if dp_overlap is not None:
+            dp_overlaps.append(dp_overlap)
+        dp_jaccard = _jaccard_similarity(baseline_set, private_set)
+        if dp_jaccard is not None:
+            dp_jaccards.append(dp_jaccard)
+        reconstruction_overlap = _set_retention(
+            original_by_user[user_id], baseline_set
+        )
+        if reconstruction_overlap is not None:
+            reconstruction_overlaps.append(reconstruction_overlap)
         output_users.extend([user_id] * len(candidates))
         output_items.extend(candidates.tolist())
 
@@ -177,6 +231,87 @@ def privatize_source_dataset(dataset, user_num, item_num, config, logger):
     logger.info('interaction-level L2 sensitivity: %.12g', sensitivity)
     logger.info('calibrated noise sigma: %.12g', calibrated_sigma)
     logger.info('noise multiplier: %.12g', noise_multiplier)
+    logger.info('noise seed: %d', noise_seed)
     logger.info('applied noise sigma: %.12g', sigma)
+    if dp_overlaps:
+        logger.info(
+            'mean Top-%d retention (sigma=0 retained after DP): %.6f',
+            max_items_per_user,
+            float(np.mean(dp_overlaps)),
+        )
+    else:
+        logger.info(
+            'Top-K retention is undefined because all sigma=0 sets are empty.'
+        )
+    if dp_jaccards:
+        logger.info(
+            'mean Top-%d Jaccard similarity (sigma=0 vs DP): %.6f',
+            max_items_per_user,
+            float(np.mean(dp_jaccards)),
+        )
+    else:
+        logger.info('Top-K Jaccard similarity is undefined for empty unions.')
+    if reconstruction_overlaps:
+        logger.info(
+            'mean original-interaction retention in Top-%d sigma=0 reconstruction: %.6f',
+            max_items_per_user,
+            float(np.mean(reconstruction_overlaps)),
+        )
+    else:
+        logger.info(
+            'Original-interaction retention is undefined because all original sets are empty.'
+        )
     logger.info('number of source interactions before and after DP: %d -> %d', before, len(output_users))
+
+    if topk_output_dir:
+        output_dir = Path(topk_output_dir).expanduser()
+        output_dir.mkdir(parents=True, exist_ok=True)
+        output_path = output_dir / (
+            'topk-projection_seed_{}-noise_seed_{}-epsilon_{:g}-multiplier_{:g}.json'.format(
+                seed, noise_seed, epsilon, noise_multiplier
+            )
+        )
+        payload = {
+            'projection_seed': seed,
+            'noise_seed': noise_seed,
+            'epsilon': epsilon,
+            'delta': delta,
+            'noise_multiplier': noise_multiplier,
+            'calibrated_sigma': calibrated_sigma,
+            'applied_sigma': sigma,
+            'k': max_items_per_user,
+            'mean_overlap_sigma0_vs_dp': (
+                float(np.mean(dp_overlaps)) if dp_overlaps else None
+            ),
+            'mean_jaccard_sigma0_vs_dp': (
+                float(np.mean(dp_jaccards)) if dp_jaccards else None
+            ),
+            'mean_overlap_original_vs_sigma0': (
+                float(np.mean(reconstruction_overlaps))
+                if reconstruction_overlaps else None
+            ),
+            'users': {
+                str(user_id): {
+                    'original': sorted(original_by_user[user_id]),
+                    'sigma0_topk': sorted(baseline_topk_by_user[user_id]),
+                    'dp_topk': sorted(private_topk_by_user[user_id]),
+                    'overlap_sigma0_vs_dp': _set_retention(
+                        baseline_topk_by_user[user_id],
+                        private_topk_by_user[user_id],
+                    ),
+                    'jaccard_sigma0_vs_dp': _jaccard_similarity(
+                        baseline_topk_by_user[user_id],
+                        private_topk_by_user[user_id],
+                    ),
+                    'overlap_original_vs_sigma0': _set_retention(
+                        original_by_user[user_id],
+                        baseline_topk_by_user[user_id],
+                    ),
+                }
+                for user_id in source_user_ids
+            },
+        }
+        with output_path.open('w', encoding='utf-8') as output_file:
+            json.dump(payload, output_file, indent=2, sort_keys=True)
+        logger.info('saved Top-K overlap data: %s', output_path)
     return private_dataset
