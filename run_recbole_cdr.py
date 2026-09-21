@@ -48,6 +48,7 @@ GPU_ID = '0'
 DP_SEEDS = (2022)
 DP_NOISE_SEEDS = (2022)
 DP_EPSILONS = (0.1, 1.0, 10.0, 100.0)
+MULTI_MODELS = ('NeuMF', 'CMF', 'DTCDR', 'EMCDR', 'CoNet')
 
 
 def resolve_dataset_preset(dataset_preset, dataset_root):
@@ -105,6 +106,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', '-m', type=str, default='AttentionDTCDR',
                         help='name of model')
+    parser.add_argument('--mutlimodel', '--multimodel', action='store_true',
+                        dest='multimodel',
+                        help='run NeuMF, CMF, DTCDR, EMCDR, and CoNet in sequence')
     parser.add_argument('--config_files', type=str, default=None,
                         help='additional config files')
     parser.add_argument('--dataset_preset', choices=tuple(DATASET_PRESET_FILES),
@@ -145,39 +149,42 @@ if __name__ == '__main__':
         'target_domain': {'data_path': str(dataset_root)},
         **build_compute_config(args.compute_device, args.gpu_id),
     }
+    models = MULTI_MODELS if args.multimodel else (args.model,)
     if not args.dp_grid:
-        run_recbole_cdr(
-            model=args.model,
-            config_file_list=config_file_list,
-            config_dict=config,
-        )
+        for model in models:
+            run_recbole_cdr(
+                model=model,
+                config_file_list=config_file_list,
+                config_dict=copy.deepcopy(config),
+            )
     else:
-        for dp_seed in args.dp_seeds:
-            for dp_noise_seed in args.dp_noise_seeds:
-                for dp_epsilon in args.dp_epsilons:
-                    epsilon_name = format_number_for_filename(dp_epsilon)
-                    run_time = datetime.now().strftime('%Y%m%d-%H%M%S-%f')
-                    log_name = '{}-{}-projection_{}-noise_{}-epsilon_{}-{}.log'.format(
-                        args.dataset_preset,
-                        args.model,
-                        dp_seed,
-                        dp_noise_seed,
-                        epsilon_name,
-                        run_time,
-                    )
-                    run_config = copy.deepcopy(config)
-                    run_config.update({
-                        'source_dp_enabled': True,
-                        'dp_seed': dp_seed,
-                        'dp_noise_seed': dp_noise_seed,
-                        'dp_epsilon': dp_epsilon,
-                        'dp_topk_output_dir': str(
-                            args.dp_log_dir / 'topk' / args.dataset_preset / args.model
-                        ),
-                    })
-                    run_recbole_cdr(
-                        model=args.model,
-                        config_file_list=config_file_list,
-                        config_dict=run_config,
-                        log_file_path=args.dp_log_dir / log_name,
-                    )
+        for model in models:
+            for dp_seed in args.dp_seeds:
+                for dp_noise_seed in args.dp_noise_seeds:
+                    for dp_epsilon in args.dp_epsilons:
+                        epsilon_name = format_number_for_filename(dp_epsilon)
+                        run_time = datetime.now().strftime('%Y%m%d-%H%M%S-%f')
+                        log_name = '{}-{}-projection_{}-noise_{}-epsilon_{}-{}.log'.format(
+                            args.dataset_preset,
+                            model,
+                            dp_seed,
+                            dp_noise_seed,
+                            epsilon_name,
+                            run_time,
+                        )
+                        run_config = copy.deepcopy(config)
+                        run_config.update({
+                            'source_dp_enabled': True,
+                            'dp_seed': dp_seed,
+                            'dp_noise_seed': dp_noise_seed,
+                            'dp_epsilon': dp_epsilon,
+                            'dp_topk_output_dir': str(
+                                args.dp_log_dir / 'topk' / args.dataset_preset / model
+                            ),
+                        })
+                        run_recbole_cdr(
+                            model=model,
+                            config_file_list=config_file_list,
+                            config_dict=run_config,
+                            log_file_path=args.dp_log_dir / log_name,
+                        )
