@@ -49,6 +49,7 @@ DP_SEEDS = (2022)
 DP_NOISE_SEEDS = (2022)
 DP_EPSILONS = (0.1, 1.0, 10.0, 100.0)
 MULTI_MODELS = ('NeuMF', 'CMF', 'DTCDR', 'EMCDR', 'CoNet')
+MODEL_SEEDS = (2022, 2023, 2024, 2025, 2026)
 
 
 def resolve_dataset_preset(dataset_preset, dataset_root):
@@ -109,9 +110,19 @@ if __name__ == '__main__':
     parser.add_argument('--mutlimodel', '--multimodel', action='store_true',
                         dest='multimodel',
                         help='run NeuMF, CMF, DTCDR, EMCDR, and CoNet in sequence')
+    parser.add_argument('--multiseed', action='store_true',
+                        help='run the configured ordinary model seeds')
+    parser.add_argument('--model_seeds', type=int, nargs='+',
+                        default=MODEL_SEEDS,
+                        help='model seeds used with --multiseed')
+    parser.add_argument('--multiseed_log_dir', type=Path,
+                        default=Path('log/multiseed'),
+                        help='directory for model-seed run logs')
     parser.add_argument('--config_files', type=str, default=None,
                         help='additional config files')
-    parser.add_argument('--dataset_preset', choices=tuple(DATASET_PRESET_FILES),
+    parser.add_argument('--dataset_preset', '--dataset',
+                        dest='dataset_preset',
+                        choices=tuple(DATASET_PRESET_FILES),
                         default=DATASET_PRESET,
                         help='complete source/target dataset configuration')
     parser.add_argument('--dataset_root', type=Path, default=DATASET_ROOT,
@@ -136,6 +147,8 @@ if __name__ == '__main__':
                         help='directory for explicitly named DP-grid logs')
 
     args, _ = parser.parse_known_args()
+    if args.multiseed and args.dp_grid:
+        parser.error('--multiseed and --dp_grid are separate run modes and cannot be combined')
     preset_file, dataset_root = resolve_dataset_preset(
         args.dataset_preset, args.dataset_root
     )
@@ -152,11 +165,23 @@ if __name__ == '__main__':
     models = MULTI_MODELS if args.multimodel else (args.model,)
     if not args.dp_grid:
         for model in models:
-            run_recbole_cdr(
-                model=model,
-                config_file_list=config_file_list,
-                config_dict=copy.deepcopy(config),
-            )
+            model_seeds = args.model_seeds if args.multiseed else (None,)
+            for model_seed in model_seeds:
+                run_config = copy.deepcopy(config)
+                log_file_path = None
+                if model_seed is not None:
+                    run_config['seed'] = model_seed
+                    run_time = datetime.now().strftime('%Y%m%d-%H%M%S-%f')
+                    log_name = '{}-{}-{}-{}.log'.format(
+                        args.dataset_preset, model, model_seed, run_time
+                    )
+                    log_file_path = args.multiseed_log_dir / log_name
+                run_recbole_cdr(
+                    model=model,
+                    config_file_list=config_file_list,
+                    config_dict=run_config,
+                    log_file_path=log_file_path,
+                )
     else:
         for model in models:
             for dp_seed in args.dp_seeds:
