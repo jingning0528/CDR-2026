@@ -4,6 +4,7 @@
 
 import argparse
 import copy
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -148,7 +149,10 @@ if __name__ == '__main__':
     parser.add_argument('--dp_log_dir', type=Path, default=Path('log/dp_grid'),
                         help='directory for explicitly named DP-grid logs')
 
-    args, _ = parser.parse_known_args()
+    args, recbole_args = parser.parse_known_args()
+    # Keep only genuine RecBole overrides in argv. Otherwise RecBole warns that
+    # this runner's own options (such as --multiseed) are unused.
+    sys.argv = [sys.argv[0]] + recbole_args
     if args.multiseed and args.dp_grid:
         parser.error('--multiseed and --dp_grid are separate run modes and cannot be combined')
     preset_file, dataset_root = resolve_dataset_preset(

@@ -137,7 +137,7 @@ class CoNet(CrossDomainRecommender):
             source_crossinput = source_crossoutput
             target_crossinput = target_crossoutput
 
-        source_out = self.source_outputunit(source_crossinput).squeeze()
+        source_out = self.source_outputunit(source_crossinput).squeeze(-1)
 
         return source_out
 
@@ -176,7 +176,7 @@ class CoNet(CrossDomainRecommender):
             source_crossinput = source_crossoutput
             target_crossinput = target_crossoutput
 
-        target_out = self.target_outputunit(target_crossinput).squeeze()
+        target_out = self.target_outputunit(target_crossinput).squeeze(-1)
 
         return target_out
 
@@ -217,7 +217,7 @@ class CoNet(CrossDomainRecommender):
 
         p = self.target_outputunit(input)
 
-        return p
+        return p.squeeze(-1)
 
     def full_sort_predict(self, interaction):
         user = interaction[self.TARGET_USER_ID]
