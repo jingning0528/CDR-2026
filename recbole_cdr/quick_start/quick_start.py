@@ -18,10 +18,12 @@ from recbole_cdr.data import create_dataset, data_preparation
 from recbole_cdr.utils import get_model, get_trainer
 
 
-def _init_logger_with_optional_path(config, log_file_path=None):
+def _init_logger_with_optional_path(config, log_file_path=None, console_output=True):
     """Initialize RecBole logging, optionally replacing its timestamped file."""
     if log_file_path is None:
         init_logger(config)
+        if not console_output:
+            _remove_console_handlers()
         return
 
     # A DP grid runs multiple experiments in one process. logging.basicConfig,
@@ -59,6 +61,19 @@ def _init_logger_with_optional_path(config, log_file_path=None):
     for log_filter in filters:
         file_handler.addFilter(log_filter)
     root_logger.addHandler(file_handler)
+    if not console_output:
+        _remove_console_handlers()
+
+
+def _remove_console_handlers():
+    """Keep file logging while silencing RecBole's console handlers."""
+    root_logger = getLogger()
+    for handler in list(root_logger.handlers):
+        if isinstance(handler, logging.StreamHandler) and not isinstance(
+            handler, logging.FileHandler
+        ):
+            root_logger.removeHandler(handler)
+            handler.close()
 
 
 def run_recbole_cdr(
@@ -67,6 +82,7 @@ def run_recbole_cdr(
     config_dict=None,
     saved=True,
     log_file_path=None,
+    console_output=True,
 ):
     r""" A fast running api, which includes the complete process of
     training and testing a model on a specified dataset
@@ -82,7 +98,7 @@ def run_recbole_cdr(
 
     init_seed(config['seed'], config['reproducibility'])
     # logger initialization
-    _init_logger_with_optional_path(config, log_file_path)
+    _init_logger_with_optional_path(config, log_file_path, console_output)
     logger = getLogger()
     logger.info(config)
 

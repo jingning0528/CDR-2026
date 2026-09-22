@@ -118,6 +118,8 @@ if __name__ == '__main__':
     parser.add_argument('--multiseed_log_dir', type=Path,
                         default=Path('log/multiseed'),
                         help='directory for model-seed run logs')
+    parser.add_argument('--final_only', '--final-only', action='store_true',
+                        help='hide per-epoch console output and print final results only')
     parser.add_argument('--config_files', type=str, default=None,
                         help='additional config files')
     parser.add_argument('--dataset_preset', '--dataset',
@@ -162,6 +164,8 @@ if __name__ == '__main__':
         'target_domain': {'data_path': str(dataset_root)},
         **build_compute_config(args.compute_device, args.gpu_id),
     }
+    if args.final_only:
+        config['show_progress'] = False
     models = MULTI_MODELS if args.multimodel else (args.model,)
     if not args.dp_grid:
         for model in models:
@@ -176,12 +180,18 @@ if __name__ == '__main__':
                         args.dataset_preset, model, model_seed, run_time
                     )
                     log_file_path = args.multiseed_log_dir / log_name
-                run_recbole_cdr(
+                result = run_recbole_cdr(
                     model=model,
                     config_file_list=config_file_list,
                     config_dict=run_config,
                     log_file_path=log_file_path,
+                    console_output=not args.final_only,
                 )
+                if args.final_only:
+                    seed_label = model_seed if model_seed is not None else 'default'
+                    print('{}-{}-{} final result: {}'.format(
+                        args.dataset_preset, model, seed_label, result['test_result']
+                    ))
     else:
         for model in models:
             for dp_seed in args.dp_seeds:
@@ -207,9 +217,19 @@ if __name__ == '__main__':
                                 args.dp_log_dir / 'topk' / args.dataset_preset / model
                             ),
                         })
-                        run_recbole_cdr(
+                        result = run_recbole_cdr(
                             model=model,
                             config_file_list=config_file_list,
                             config_dict=run_config,
                             log_file_path=args.dp_log_dir / log_name,
+                            console_output=not args.final_only,
                         )
+                        if args.final_only:
+                            print('{}-{}-projection_{}-noise_{}-epsilon_{} final result: {}'.format(
+                                args.dataset_preset,
+                                model,
+                                dp_seed,
+                                dp_noise_seed,
+                                epsilon_name,
+                                result['test_result'],
+                            ))
