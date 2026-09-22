@@ -57,11 +57,19 @@ class DCDCSR(CrossDomainRecommender):
         self.SOURCE_LABEL = dataset.source_domain_dataset.label_field
         self.TARGET_LABEL = dataset.target_domain_dataset.label_field
         if self.mode == 'overlap_items':
-            self.source_item2pop = self.build_unit2pop(dataset, unit='item', domain='source')
-            self.target_item2pop = self.build_unit2pop(dataset, unit='item', domain='target')
+            self.source_item2pop = self.build_unit2pop(
+                dataset, unit='item', domain='source'
+            ).to(self.device)
+            self.target_item2pop = self.build_unit2pop(
+                dataset, unit='item', domain='target'
+            ).to(self.device)
         elif self.mode == 'overlap_users':
-            self.source_user2pop = self.build_unit2pop(dataset, unit='user', domain='source')
-            self.target_user2pop = self.build_unit2pop(dataset, unit='user', domain='target')
+            self.source_user2pop = self.build_unit2pop(
+                dataset, unit='user', domain='source'
+            ).to(self.device)
+            self.target_user2pop = self.build_unit2pop(
+                dataset, unit='user', domain='target'
+            ).to(self.device)
 
         # define layers and loss
         self.source_user_embedding = nn.Embedding(self.total_num_users, self.embedding_size)
